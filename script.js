@@ -3,12 +3,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- 1. Initial Overlay Handling ---
     const overlay = document.getElementById('initial-overlay');
 
-    // Wait 2.5 seconds, then fade out the overlay
+    // Start Fireworks & Audio immediately
+    startFireworks();
+
+    // Wait 5 seconds, then fade out the overlay
     setTimeout(() => {
         overlay.classList.add('overlay-hidden');
         // Optional: Enable scrolling on body after overlay is gone if you disabled it initially
         // document.body.style.overflow = 'auto'; 
-    }, 2500);
+    }, 5000);
 
 
     // --- 2. Countdown Timer Logic ---
@@ -88,7 +91,7 @@ function startConfetti() {
     canvas.style.width = '100%';
     canvas.style.height = '100%';
     canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '99999'; // Ensure it's on top
+    canvas.style.zIndex = '99998'; // Below fireworks
     document.body.appendChild(canvas);
 
     let width = window.innerWidth;
@@ -189,5 +192,171 @@ function initParallax() {
         const y = (window.innerHeight - e.pageY * 2) / 90;
 
         logo.style.transform = `translateX(${x}px) translateY(${y}px)`;
+    });
+}
+
+function startFireworks() {
+    const overlay = document.getElementById('initial-overlay');
+    if (!overlay) return;
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
+    canvas.style.width = '100%';
+    canvas.style.height = '100%';
+    canvas.style.pointerEvents = 'none';
+    canvas.style.zIndex = '1'; // Behind text
+    overlay.appendChild(canvas);
+
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Play Audio with Autoplay Handling
+    const audio = new Audio('fireworks.mp3');
+    audio.volume = 0.5;
+
+    const playAudio = () => {
+        audio.play().catch(e => {
+            console.log("Audio autoplay blocked, waiting for interaction:", e);
+            // If blocked, play on first interaction
+            const playOnInteraction = () => {
+                audio.play();
+                document.removeEventListener('click', playOnInteraction);
+                document.removeEventListener('touchstart', playOnInteraction);
+            };
+            document.addEventListener('click', playOnInteraction);
+            document.addEventListener('touchstart', playOnInteraction);
+        });
+    };
+
+    playAudio();
+
+
+    class Firework {
+        constructor() {
+            this.x = Math.random() * width;
+            this.y = height;
+            this.targetY = Math.random() * (height * 0.5);
+            this.speed = Math.random() * 3 + 5;
+            this.angle = -Math.PI / 2 + (Math.random() * 0.2 - 0.1);
+            this.vx = Math.cos(this.angle) * this.speed;
+            this.vy = Math.sin(this.angle) * this.speed;
+            this.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+            this.exploded = false;
+            this.particles = [];
+        }
+
+        update() {
+            if (!this.exploded) {
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vy += 0.05; // Gravity
+
+                if (this.vy >= 0 || this.y <= this.targetY) {
+                    this.explode();
+                }
+            } else {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    this.particles[i].update();
+                    if (this.particles[i].alpha <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+        }
+
+        explode() {
+            this.exploded = true;
+            for (let i = 0; i < 50; i++) {
+                this.particles.push(new Particle(this.x, this.y, this.color));
+            }
+        }
+
+        draw() {
+            if (!this.exploded) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+            } else {
+                this.particles.forEach(p => p.draw());
+            }
+        }
+    }
+
+    class Particle {
+        constructor(x, y, color) {
+            this.x = x;
+            this.y = y;
+            this.color = color;
+            const angle = Math.random() * Math.PI * 2;
+            const speed = Math.random() * 4 + 1;
+            this.vx = Math.cos(angle) * speed;
+            this.vy = Math.sin(angle) * speed;
+            this.alpha = 1;
+            this.decay = Math.random() * 0.02 + 0.01;
+        }
+
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+            this.vy += 0.05; // Gravity
+            this.alpha -= this.decay;
+        }
+
+        draw() {
+            ctx.save();
+            ctx.globalAlpha = this.alpha;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, 2, 0, Math.PI * 2);
+            ctx.fillStyle = this.color;
+            ctx.fill();
+            ctx.restore();
+        }
+    }
+
+    let fireworks = [];
+    let animationId;
+
+    function animate() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Trail effect
+        ctx.fillRect(0, 0, width, height);
+
+        if (Math.random() < 0.05) { // Spawn rate
+            fireworks.push(new Firework());
+        }
+
+        for (let i = fireworks.length - 1; i >= 0; i--) {
+            fireworks[i].update();
+            fireworks[i].draw();
+            if (fireworks[i].exploded && fireworks[i].particles.length === 0) {
+                fireworks.splice(i, 1);
+            }
+        }
+
+        animationId = requestAnimationFrame(animate);
+    }
+
+    animate();
+
+    // Stop fireworks after 5.5 seconds (matches overlay fade out)
+    setTimeout(() => {
+        canvas.style.transition = 'opacity 1s ease';
+        canvas.style.opacity = '0';
+        setTimeout(() => {
+            cancelAnimationFrame(animationId);
+            canvas.remove();
+        }, 1000);
+    }, 5500);
+
+    window.addEventListener('resize', () => {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
     });
 }
