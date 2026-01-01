@@ -468,3 +468,22 @@ footer p {
     font-size: 1rem;
     text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
 }
+
+@media (max-width: 480px) {
+    .cutout-card {
+        padding-left: 140px;
+        min-height: 180px;
+    }
+
+    .guest-cutout {
+        max-width: 130px;
+    }
+
+    .cutout-card .guest-name {
+        font-size: 1.4rem;
+    }
+
+    .cutout-card .guest-role {
+        font-size: 0.9rem;
+    }
+}
